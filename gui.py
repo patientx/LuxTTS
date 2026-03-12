@@ -1,3 +1,4 @@
+import patch_torch_distributed  # patches torch.distributed for ROCm
 import gradio as gr
 import numpy as np
 import soundfile as sf
@@ -176,10 +177,10 @@ with gr.Blocks() as demo:
                 num_steps_slider = gr.Slider(
                     minimum=1,
                     maximum=20,
-                    value=6,
+                    value=4,
                     step=1,
                     label="Number of Steps",
-                    info="Higher sounds better but takes longer (4 is default, 6-10 is best)"
+                    info="Higher sounds better but takes longer (3-4 is best for efficiency)"
                 )
                 t_shift_slider = gr.Slider(
                     minimum=0.0,
@@ -194,23 +195,23 @@ with gr.Blocks() as demo:
                 guidance_scale_slider = gr.Slider(
                     minimum=1.0,
                     maximum=10.0,
-                    value=1.5,
+                    value=3.0,
                     step=0.5,
                     label="Guidance Scale",
-                    info="Classifier-free guidance strength (default: 3.0 ,found 1.5 better)"
+                    info="Classifier-free guidance strength (default: 3.0)"
                 )
                 speed_slider = gr.Slider(
                     minimum=0.5,
                     maximum=2.0,
-                    value=0.9,
+                    value=1.0,
                     step=0.1,
                     label="Speed",
-                    info="Controls speed of audio - lower is slower (default: 1.0) (found 0.9 better)"
+                    info="Controls speed of audio - lower is slower (default: 1.0)"
                 )
                 return_smooth_checkbox = gr.Checkbox(
-                    value=True,
+                    value=False,
                     label="Return Smooth",
-                    info="Makes it sound smoother possibly but less clean (enabled sounds better)"
+                    info="Makes it sound smoother possibly but less clean"
                 )
             
             submit_btn = gr.Button("Generate Speech", variant="primary")
