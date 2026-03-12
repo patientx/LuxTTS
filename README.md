@@ -47,7 +47,7 @@ For AMD GPU users with ROCm PyTorch builds, you'll need to install necessary roc
 Launch the Gradio interface for an easy-to-use web UI:
 
 ```bash
-python demo.py
+python gui.py
 ```
 
 Features:
