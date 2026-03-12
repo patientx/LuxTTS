@@ -34,7 +34,7 @@ You can try it locally, colab, or spaces.
 
 #### Simple installation:
 ```bash
-git clone https://github.com/ysharma3501/LuxTTS.git
+git clone https://github.com/patientx/LuxTTS.git
 cd LuxTTS
 pip install -r requirements.txt
 ```
@@ -172,7 +172,7 @@ encoded_prompt = lux_tts.encode_prompt(
 
 ## What's New in This Fork
 
-### Gradio GUI (`demo.py`)
+### Gradio GUI (`gui.py`)
 - **Auto-duration detection**: Automatically sets duration to match your audio file
 - **Manual reference text support**: Optional field to provide transcription manually
 - **Auto-transcribe button**: Preview Whisper's output before generation
