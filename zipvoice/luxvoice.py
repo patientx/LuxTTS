@@ -7,7 +7,7 @@ class LuxTTS:
     LuxTTS class for encoding prompt and generating speech on cpu/cuda/mps.
     """
 
-    def __init__(self, model_path='YatharthS/LuxTTS', device='cuda', threads=4):
+    def __init__(self, model_path='YatharthS/LuxTTS', device='cuda', threads=4, skip_whisper=False):
         if model_path == 'YatharthS/LuxTTS':
             model_path = None
 
@@ -21,10 +21,10 @@ class LuxTTS:
                 device = 'cpu'
 
         if device == 'cpu':
-            model, feature_extractor, vocos, tokenizer, transcriber = load_models_cpu(model_path, threads)
+            model, feature_extractor, vocos, tokenizer, transcriber = load_models_cpu(model_path, threads, skip_whisper=skip_whisper)
             print("Loading model on CPU")
         else:
-            model, feature_extractor, vocos, tokenizer, transcriber = load_models_gpu(model_path, device=device)
+            model, feature_extractor, vocos, tokenizer, transcriber = load_models_gpu(model_path, device=device, skip_whisper=skip_whisper)
             print("Loading model on GPU")
 
         self.model = model
@@ -37,9 +37,26 @@ class LuxTTS:
 
 
 
-    def encode_prompt(self, prompt_audio, duration=5, rms=0.001):
-        """encodes audio prompt according to duration and rms(volume control)"""
-        prompt_tokens, prompt_features_lens, prompt_features, prompt_rms = process_audio(prompt_audio, self.transcriber, self.tokenizer, self.feature_extractor, self.device, target_rms=rms, duration=duration)
+    def encode_prompt(self, prompt_audio, duration=5, rms=0.001, reference_text=None):
+        """encodes audio prompt according to duration and rms(volume control)
+        
+        Args:
+            prompt_audio: path to audio file
+            duration: duration in seconds to use from audio
+            rms: target RMS for volume normalization
+            reference_text: optional manual transcription of the reference audio. 
+                          If provided, skips Whisper transcription (faster)
+        """
+        prompt_tokens, prompt_features_lens, prompt_features, prompt_rms = process_audio(
+            prompt_audio, 
+            self.transcriber, 
+            self.tokenizer, 
+            self.feature_extractor, 
+            self.device, 
+            target_rms=rms, 
+            duration=duration,
+            reference_text=reference_text
+        )
         encode_dict = {"prompt_tokens": prompt_tokens, 'prompt_features_lens': prompt_features_lens, 'prompt_features': prompt_features, 'prompt_rms': prompt_rms}
 
         return encode_dict
