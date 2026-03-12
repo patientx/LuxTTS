@@ -194,7 +194,7 @@ encoded_prompt = lux_tts.encode_prompt(
 
 ```
 LuxTTS/
-├── demo.py                      # Gradio GUI (recommended)
+├── gui.py                      # Gradio GUI (recommended)
 ├── patch_torch_distributed.py   # ROCm compatibility patch
 ├── patches/
 │   └── distrib.py              # Fixed encodec distrib.py for ROCm
