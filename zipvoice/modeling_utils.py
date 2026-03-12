@@ -44,11 +44,24 @@ class LuxTTSConfig:
 
 
 @torch.inference_mode
-def process_audio(audio, transcriber, tokenizer, feature_extractor, device, target_rms=0.1, duration=4, feat_scale=0.1):
+def process_audio(audio, transcriber, tokenizer, feature_extractor, device, target_rms=0.1, duration=4, feat_scale=0.1, reference_text=None):
+    # Load audio at 24kHz for features (this is what actually gets encoded)
     prompt_wav, sr = librosa.load(audio, sr=24000, duration=duration)
-    prompt_wav2, sr = librosa.load(audio, sr=16000, duration=duration)
-    prompt_text = transcriber(prompt_wav2)["text"]
-    print(prompt_text)
+    
+    # Use manual reference text if provided, otherwise transcribe
+    if reference_text is not None:
+        # Normalize the manual text to match Whisper's output format
+        prompt_text = reference_text.strip()
+        print(f"Using manual reference text: '{prompt_text}'")
+    else:
+        if transcriber is None:
+            raise ValueError("No transcriber available and no reference_text provided. Either provide reference_text or initialize with skip_whisper=False")
+        # Load the SAME audio segment at 16kHz for Whisper
+        # This ensures Whisper transcribes the exact same time window
+        prompt_wav2, sr = librosa.load(audio, sr=16000, duration=duration)
+        whisper_output = transcriber(prompt_wav2)
+        prompt_text = whisper_output["text"].strip()  # Strip whitespace
+        print(f"Transcribed text: '{prompt_text}'")
 
     prompt_wav = torch.from_numpy(prompt_wav).unsqueeze(0)
     prompt_wav, prompt_rms = rms_norm(prompt_wav, target_rms)
@@ -59,6 +72,12 @@ def process_audio(audio, transcriber, tokenizer, feature_extractor, device, targ
     prompt_features = prompt_features.unsqueeze(0) * feat_scale
     prompt_features_lens = torch.tensor([prompt_features.size(1)], device=device)
     prompt_tokens = tokenizer.texts_to_token_ids([prompt_text])
+    
+    # Debug: print detailed information
+    print(f"Audio features: {prompt_features.shape}, length: {prompt_features_lens.item()} frames")
+    print(f"Text tokenized to: {len(prompt_tokens[0])} tokens")
+    print(f"Tokens: {prompt_tokens}")
+    
     return prompt_tokens, prompt_features_lens, prompt_features, prompt_rms
 
 def generate(prompt_tokens, prompt_features_lens, prompt_features, prompt_rms, text, model, vocoder, tokenizer, num_step=4, guidance_scale=3.0, speed=1.0, t_shift=0.5, target_rms=0.1):
@@ -90,7 +109,7 @@ def generate(prompt_tokens, prompt_features_lens, prompt_features, prompt_rms, t
 
     return wav
 
-def load_models_gpu(model_path=None, device="cuda"):
+def load_models_gpu(model_path=None, device="cuda", skip_whisper=False):
     params = LuxTTSConfig()
     if model_path is None:
         model_path = snapshot_download("YatharthS/LuxTTS")
@@ -99,7 +118,13 @@ def load_models_gpu(model_path=None, device="cuda"):
     model_ckpt = f"{model_path}/model.pt"
     model_config = f"{model_path}/config.json"
 
-    transcriber = pipeline("automatic-speech-recognition", model="openai/whisper-base", device=device)
+    # Skip Whisper loading if requested
+    if skip_whisper:
+        print("Skipping Whisper model loading - you must provide reference_text manually")
+        transcriber = None
+    else:
+        transcriber = pipeline("automatic-speech-recognition", model="openai/whisper-base", device=device)
+    
     tokenizer = EmiliaTokenizer(token_file=token_file)
     tokenizer_config = {"vocab_size": tokenizer.vocab_size, "pad_id": tokenizer.pad_id}
 
@@ -124,7 +149,7 @@ def load_models_gpu(model_path=None, device="cuda"):
     params.sampling_rate = model_config["feature"]["sampling_rate"]
     return model, feature_extractor, vocos, tokenizer, transcriber
 
-def load_models_cpu(model_path = None, num_thread=2):
+def load_models_cpu(model_path = None, num_thread=2, skip_whisper=False):
     params = LuxTTSConfig()
     params.seed = 42
 
@@ -135,7 +160,12 @@ def load_models_cpu(model_path = None, num_thread=2):
     fm_decoder_path = f"{model_path}/fm_decoder.onnx"
     model_config  = f"{model_path}/config.json"
 
-    transcriber = pipeline("automatic-speech-recognition", model="openai/whisper-tiny", device='cpu')
+    # Skip Whisper loading if requested
+    if skip_whisper:
+        print("Skipping Whisper model loading - you must provide reference_text manually")
+        transcriber = None
+    else:
+        transcriber = pipeline("automatic-speech-recognition", model="openai/whisper-tiny", device='cpu')
 
     tokenizer = EmiliaTokenizer(token_file=token_file)
     tokenizer_config = {"vocab_size": tokenizer.vocab_size, "pad_id": tokenizer.pad_id}
